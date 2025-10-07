@@ -83,20 +83,20 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ visualization }) => {
 				return (
 					<BarChart {...commonProps}>
 						{show_grid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
-						<XAxis 
+						<XAxis
 							dataKey={x_axis_key}
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 						/>
-						<YAxis 
+						<YAxis
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 							allowDecimals={false}
 						/>
-						<Tooltip 
-							contentStyle={{ 
+						<Tooltip
+							contentStyle={{
 								backgroundColor: '#1a1a1a',
 								border: '1px solid #333',
 								borderRadius: '6px',
@@ -123,20 +123,20 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ visualization }) => {
 				return (
 					<LineChart {...commonProps}>
 						{show_grid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
-						<XAxis 
+						<XAxis
 							dataKey={x_axis_key}
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 						/>
-						<YAxis 
+						<YAxis
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 							allowDecimals={false}
 						/>
-						<Tooltip 
-							contentStyle={{ 
+						<Tooltip
+							contentStyle={{
 								backgroundColor: '#1a1a1a',
 								border: '1px solid #333',
 								borderRadius: '6px',
@@ -165,20 +165,20 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ visualization }) => {
 				return (
 					<AreaChart {...commonProps}>
 						{show_grid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
-						<XAxis 
+						<XAxis
 							dataKey={x_axis_key}
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 						/>
-						<YAxis 
+						<YAxis
 							tick={{ fill: 'currentColor', fontSize: 12 }}
 							tickLine={{ stroke: 'currentColor' }}
 							axisLine={{ stroke: 'currentColor' }}
 							allowDecimals={false}
 						/>
-						<Tooltip 
-							contentStyle={{ 
+						<Tooltip
+							contentStyle={{
 								backgroundColor: '#1a1a1a',
 								border: '1px solid #333',
 								borderRadius: '6px',
@@ -221,8 +221,8 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ visualization }) => {
 								<Cell key={`cell-${index}`} fill={colors[index % colors.length] || "#8884d8"} />
 							))}
 						</Pie>
-						<Tooltip 
-							contentStyle={{ 
+						<Tooltip
+							contentStyle={{
 								backgroundColor: '#1a1a1a',
 								border: '1px solid #333',
 								borderRadius: '6px',
@@ -257,19 +257,19 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ visualization }) => {
 
 // Utility function to determine if the response contains visualization data
 const isVisualizationResponse = (response: any): boolean => {
-	const hasViz = response.visualization && 
-		   response.visualization.chart_type && 
-		   response.visualization.data && 
-		   Array.isArray(response.visualization.data) && 
-		   response.visualization.data.length > 0
-	
+	const hasViz = response.visualization &&
+		response.visualization.chart_type &&
+		response.visualization.data &&
+		Array.isArray(response.visualization.data) &&
+		response.visualization.data.length > 0
+
 	console.log("Checking visualization:", {
 		hasVisualization: hasViz,
 		chartType: response.visualization?.chart_type,
 		dataLength: response.visualization?.data?.length,
 		responseType: response.response_type
 	})
-	
+
 	return hasViz
 }
 
@@ -307,19 +307,19 @@ export default function QueryPage() {
 		setIsLoading(true)
 
 		try {
-			const res = await axios.post("http://localhost:8000/natural-processing", {
+			const res = await axios.post(process.env.RAG_BACKEND_URL || "http://localhost:8000/natural-processing", {
 				"query": userMessage.content
 			});
 
 			console.log("Backend Response:", res.data);
 
 			const responseData = res.data;
-			
+
 			// Check if the response itself is the visualization data
 			// Some backends might send the chart data directly, others wrap it
 			let visualizationData: ChartVisualization | undefined;
 			let hasVisualization = false;
-			
+
 			// Case 1: Response has a 'visualization' field
 			if (responseData.visualization) {
 				visualizationData = responseData.visualization;
@@ -564,7 +564,7 @@ export default function QueryPage() {
 										</div>
 									</div>
 								)}
-								
+
 								{/* Scroll anchor */}
 								<div ref={messagesEndRef} />
 							</div>

@@ -1,4 +1,5 @@
 from typing import Literal, List, Any, Dict
+import os
 from dotenv import load_dotenv
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -137,9 +138,7 @@ def select(query: str):
     """
     try:
         # Step 1: Use SQL agent to get the raw data from database
-        db = SQLDatabase.from_uri(
-            "postgresql+psycopg://postgres:bigsparsh@localhost:5432/inventorydb"
-        )
+        db = SQLDatabase.from_uri(os.getenv("DATABASE_URL"))
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
         agent_executor = create_sql_agent(
             llm=llm,
@@ -234,9 +233,7 @@ def visualize(query: str):
     """
     try:
         # Step 1: Use SQL agent to get the raw data from database
-        db = SQLDatabase.from_uri(
-            "postgresql+psycopg://postgres:bigsparsh@localhost:5432/inventorydb"
-        )
+        db = SQLDatabase.from_uri(os.getenv("DATABASE_URL"))
         toolkit = SQLDatabaseToolkit(db=db, llm=llm)
         agent_executor = create_sql_agent(
             llm=llm,
