@@ -53,6 +53,7 @@ import { Users, Search, Plus, MoreVertical, Trash2, TrendingUp, Mail, Shield, Ca
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { useAuth } from "@/contexts/auth-context"
 
 // Form validation schema
 const staffFormSchema = z.object({
@@ -76,6 +77,7 @@ interface StaffMember {
 }
 
 export default function StaffPage() {
+  const { hasPermission, user } = useAuth()
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -258,12 +260,21 @@ export default function StaffPage() {
                 <Users className="h-8 w-8 text-primary" />
                 Staff Management
               </h1>
-              <p className="text-muted-foreground">Manage your team members and their roles</p>
+              <p className="text-muted-foreground">
+                Manage your team members and their roles
+                {user && !hasPermission('update') && (
+                  <span className="ml-2 text-amber-600 font-medium">
+                    (Read-Only Access)
+                  </span>
+                )}
+              </p>
             </div>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Staff Member
-            </Button>
+            {hasPermission('create') && (
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Staff Member
+              </Button>
+            )}
           </div>
 
           {/* Search and Filters */}
@@ -316,36 +327,42 @@ export default function StaffPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Promote to Role</DropdownMenuLabel>
-                        <DropdownMenuItem 
-                          onClick={() => handlePromoteStaff(member, 'STAFF')}
-                          disabled={member.role === 'STAFF'}
-                        >
-                          <Shield className="h-4 w-4 mr-2" />
-                          Staff
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handlePromoteStaff(member, 'MANAGER')}
-                          disabled={member.role === 'MANAGER'}
-                        >
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Manager
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handlePromoteStaff(member, 'ADMIN')}
-                          disabled={member.role === 'ADMIN'}
-                        >
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Admin
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteStaff(member)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove Staff
-                        </DropdownMenuItem>
+                        {hasPermission('update') && (
+                          <>
+                            <DropdownMenuLabel>Promote to Role</DropdownMenuLabel>
+                            <DropdownMenuItem 
+                              onClick={() => handlePromoteStaff(member, 'STAFF')}
+                              disabled={member.role === 'STAFF'}
+                            >
+                              <Shield className="h-4 w-4 mr-2" />
+                              Staff
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handlePromoteStaff(member, 'MANAGER')}
+                              disabled={member.role === 'MANAGER'}
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Manager
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handlePromoteStaff(member, 'ADMIN')}
+                              disabled={member.role === 'ADMIN'}
+                            >
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Admin
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        {hasPermission('delete') && (
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteStaff(member)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove Staff
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

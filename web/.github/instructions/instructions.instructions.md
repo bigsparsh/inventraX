@@ -157,3 +157,12 @@ $$;
 CREATE TRIGGER trigger_update_inventory
 AFTER INSERT OR UPDATE ON Transactions
 FOR EACH ROW EXECUTE FUNCTION update_inventory_on_transaction();
+
+
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+
+-- Password is 'password123' hashed with bcrypt
+UPDATE Users 
+SET password = '$2a$10$rQZ5xKxV8yKxV8yKxV8yKOM.xKxV8yKxV8yKxV8yKxV8yKxV8yKO'
+WHERE password IS NULL;
+

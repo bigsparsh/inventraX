@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, Users, Package, Database, Home, Menu, X, BarChart3 } from "lucide-react"
+import { MessageSquare, Users, Package, Database, Home, Menu, X, BarChart3, LogOut } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 const navigation = [
 	{ name: "Dashboard", href: "/dashboard", icon: Home },
@@ -18,6 +19,14 @@ const navigation = [
 export function Sidebar() {
 	const [isOpen, setIsOpen] = useState(false)
 	const pathname = usePathname()
+	const router = useRouter()
+	const { user, logout } = useAuth()
+
+	const handleLogout = () => {
+		logout()
+		router.push('/login')
+		setIsOpen(false)
+	}
 
 	return (
 		<>
@@ -70,9 +79,28 @@ export function Sidebar() {
 						})}
 					</nav>
 
-					{/* Footer */}
-					<div className="px-6 py-4 border-t border-sidebar-border">
-						<p className="text-xs text-muted-foreground">InventoryIQ v1.0</p>
+					{/* Footer with User Info and Logout */}
+					<div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+						{user && (
+							<div className="px-2">
+								<p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
+								<p className="text-xs text-muted-foreground truncate">{user.email}</p>
+								<p className="text-xs text-muted-foreground mt-1">
+									<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+										{user.role}
+									</span>
+								</p>
+							</div>
+						)}
+						<Button 
+							variant="ghost" 
+							className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+							onClick={handleLogout}
+						>
+							<LogOut className="h-4 w-4 mr-2" />
+							Logout
+						</Button>
+						<p className="text-xs text-muted-foreground px-2">InventoryIQ v1.0</p>
 					</div>
 				</div>
 			</div>

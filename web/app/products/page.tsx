@@ -64,6 +64,7 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { useAuth } from "@/contexts/auth-context"
 
 // Form validation schema
 const productFormSchema = z.object({
@@ -93,6 +94,7 @@ interface Category {
 }
 
 export default function ProductsPage() {
+	const { hasPermission, user } = useAuth()
 	const [products, setProducts] = useState<Product[]>([])
 	const [categories, setCategories] = useState<Category[]>([])
 	const [searchTerm, setSearchTerm] = useState("")
@@ -100,6 +102,7 @@ export default function ProductsPage() {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 	const [addDialogOpen, setAddDialogOpen] = useState(false)
+	const [editDialogOpen, setEditDialogOpen] = useState(false)
 	const [uploading, setUploading] = useState(false)
 	const [imagePreview, setImagePreview] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
@@ -162,6 +165,19 @@ export default function ProductsPage() {
 		setDeleteDialogOpen(true)
 	}
 
+	const handleEditProduct = (product: Product) => {
+		setSelectedProduct(product)
+		form.reset({
+			name: product.name,
+			description: product.description || "",
+			category_id: product.category_id,
+			quantity: product.quantity,
+			image: product.image,
+		})
+		setImagePreview(product.image)
+		setEditDialogOpen(true)
+	}
+
 	const confirmDelete = async () => {
 		if (selectedProduct) {
 			try {
@@ -209,22 +225,40 @@ export default function ProductsPage() {
 
 	const onSubmit = async (data: ProductFormValues) => {
 		try {
-			const res = await fetch('/api/products', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
-			})
+			if (editDialogOpen && selectedProduct) {
+				// Update existing product
+				const res = await fetch(`/api/products/${selectedProduct.product_id}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(data),
+				})
 
-			if (res.ok) {
-				const newProduct = await res.json()
-				setProducts([...products, newProduct])
-				setAddDialogOpen(false)
-				form.reset()
-				setImagePreview(null)
-				await fetchData() // Refresh to get category names
+				if (res.ok) {
+					await fetchData() // Refresh to get updated data
+					setEditDialogOpen(false)
+					form.reset()
+					setImagePreview(null)
+					setSelectedProduct(null)
+				}
+			} else {
+				// Create new product
+				const res = await fetch('/api/products', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(data),
+				})
+
+				if (res.ok) {
+					const newProduct = await res.json()
+					setProducts([...products, newProduct])
+					setAddDialogOpen(false)
+					form.reset()
+					setImagePreview(null)
+					await fetchData() // Refresh to get category names
+				}
 			}
 		} catch (error) {
-			console.error('Error creating product:', error)
+			console.error('Error saving product:', error)
 		}
 	}
 
@@ -273,12 +307,21 @@ export default function ProductsPage() {
 								<Package className="h-8 w-8 text-primary" />
 								Product Management
 							</h1>
-							<p className="text-muted-foreground">Manage your inventory products and stock levels</p>
+							<p className="text-muted-foreground">
+								Manage your inventory products and stock levels
+								{user && !hasPermission('update') && (
+									<span className="ml-2 text-amber-600 font-medium">
+										(Read-Only Access)
+									</span>
+								)}
+							</p>
 						</div>
-						<Button onClick={() => setAddDialogOpen(true)}>
-							<Plus className="h-4 w-4 mr-2" />
-							Add Product
-						</Button>
+						{hasPermission('create') && (
+							<Button onClick={() => setAddDialogOpen(true)}>
+								<Plus className="h-4 w-4 mr-2" />
+								Add Product
+							</Button>
+						)}
 					</div>
 
 					{/* Search and Filters */}
@@ -343,18 +386,24 @@ export default function ProductsPage() {
 													<Eye className="h-4 w-4 mr-2" />
 													View Details
 												</DropdownMenuItem>
-												<DropdownMenuItem>
-													<Edit className="h-4 w-4 mr-2" />
-													Edit Product
-												</DropdownMenuItem>
-												<DropdownMenuSeparator />
-												<DropdownMenuItem
-													onClick={() => handleDeleteProduct(product)}
-													className="text-destructive focus:text-destructive"
-												>
-													<Trash2 className="h-4 w-4 mr-2" />
-													Delete
-												</DropdownMenuItem>
+												{hasPermission('update') && (
+													<DropdownMenuItem onClick={() => handleEditProduct(product)}>
+														<Edit className="h-4 w-4 mr-2" />
+														Edit Product
+													</DropdownMenuItem>
+												)}
+												{hasPermission('delete') && (
+													<>
+														<DropdownMenuSeparator />
+														<DropdownMenuItem
+															onClick={() => handleDeleteProduct(product)}
+															className="text-destructive focus:text-destructive"
+														>
+															<Trash2 className="h-4 w-4 mr-2" />
+															Delete
+														</DropdownMenuItem>
+													</>
+												)}
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</div>
@@ -597,6 +646,197 @@ export default function ProductsPage() {
 										<>
 											<Plus className="h-4 w-4 mr-2" />
 											Create Product
+										</>
+									)}
+								</Button>
+							</DialogFooter>
+						</form>
+					</Form>
+				</DialogContent>
+			</Dialog>
+
+			{/* Edit Product Dialog */}
+			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Edit Product</DialogTitle>
+						<DialogDescription>
+							Update the product details below. All fields marked with * are required.
+						</DialogDescription>
+					</DialogHeader>
+
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+							<FormField
+								control={form.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Name *</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter product name" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="description"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Enter product description"
+												className="resize-none"
+												rows={3}
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="category_id"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Category *</FormLabel>
+											<Select onValueChange={field.onChange} value={field.value}>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select a category" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{categories.map((category) => (
+														<SelectItem key={category.category_id} value={category.category_id}>
+															{category.name}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+
+								<FormField
+									control={form.control}
+									name="quantity"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Quantity *</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min="0"
+													placeholder="0"
+													{...field}
+													onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+
+							<FormField
+								control={form.control}
+								name="image"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Image</FormLabel>
+										<FormControl>
+											<div className="space-y-4">
+												<div className="flex items-center gap-4">
+													<Button
+														type="button"
+														variant="outline"
+														disabled={uploading}
+														onClick={() => document.getElementById('image-upload-edit')?.click()}
+													>
+														{uploading ? (
+															<>
+																<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+																Uploading...
+															</>
+														) : (
+															<>
+																<Upload className="h-4 w-4 mr-2" />
+																Upload Image
+															</>
+														)}
+													</Button>
+													<input
+														id="image-upload-edit"
+														type="file"
+														accept="image/*"
+														className="hidden"
+														onChange={handleImageUpload}
+													/>
+													{imagePreview && (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															onClick={() => {
+																setImagePreview(null)
+																form.setValue('image', null)
+															}}
+														>
+															Remove
+														</Button>
+													)}
+												</div>
+												{imagePreview && (
+													<div className="relative w-full h-48 bg-muted rounded-lg overflow-hidden">
+														<img
+															src={imagePreview}
+															alt="Preview"
+															className="w-full h-full object-contain"
+														/>
+													</div>
+												)}
+											</div>
+										</FormControl>
+										<FormDescription>
+											Upload a product image (max 5MB, JPEG/PNG/WebP/GIF)
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<DialogFooter>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => {
+										setEditDialogOpen(false)
+										form.reset()
+										setImagePreview(null)
+										setSelectedProduct(null)
+									}}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" disabled={form.formState.isSubmitting}>
+									{form.formState.isSubmitting ? (
+										<>
+											<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+											Updating...
+										</>
+									) : (
+										<>
+											<Edit className="h-4 w-4 mr-2" />
+											Update Product
 										</>
 									)}
 								</Button>
