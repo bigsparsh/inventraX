@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
 
@@ -15,11 +17,98 @@ class _CheckInScreenState extends State<CheckInScreen> {
   MobileScannerController cameraController = MobileScannerController();
   bool isProcessing = false;
   String? lastScannedCode;
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? selectedImage;
 
   @override
   void dispose() {
     cameraController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+
+      if (image != null) {
+        setState(() {
+          selectedImage = image;
+        });
+        
+        // Show a dialog to manually enter or scan QR from the image
+        if (mounted) {
+          _showImageViewDialog(image);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageViewDialog(XFile image) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.file(
+              File(image.path),
+              fit: BoxFit.cover,
+              height: 400,
+              width: 400,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Please scan the QR code in the image using your camera or enter the product ID manually',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Enter Product ID',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        Navigator.pop(context);
+                        _handleCheckIn(value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleCheckIn(String productId) async {
@@ -99,12 +188,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
             icon: const Icon(Icons.flash_on),
             onPressed: () => cameraController.toggleTorch(),
           ),
+          IconButton(
+            icon: const Icon(Icons.image),
+            onPressed: isProcessing ? null : _pickFromGallery,
+            tooltip: 'Pick from gallery',
+          ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            flex: 4,
+            flex: 5,
             child: Stack(
               children: [
                 MobileScanner(
@@ -148,32 +242,42 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ),
           ),
           Expanded(
-            flex: 1,
+            flex: 2,
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               color: Theme.of(context).scaffoldBackgroundColor,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
                     Icons.qr_code_scanner,
-                    size: 48,
+                    size: 40,
                     color: Colors.green,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   const Text(
                     'Scan Product QR Code',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     'Position the QR code within the frame',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Or tap the image icon to scan from gallery',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
                     ),
                     textAlign: TextAlign.center,
                   ),

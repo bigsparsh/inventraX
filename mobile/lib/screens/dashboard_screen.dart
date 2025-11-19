@@ -225,7 +225,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: SizedBox(
-                                height: 250,
+                                height: 220,
+                                width: double.infinity,
                                 child: _buildPieChart(),
                               ),
                             ),
@@ -393,11 +394,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   value: category.productCount.toDouble(),
                   title: '${category.productCount}',
                   color: colors[index % colors.length],
-                  radius: 80,
+                  radius: 60,
                   titleStyle: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 );
               }).toList(),
@@ -406,38 +407,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: _categories.asMap().entries.map((entry) {
-              final index = entry.key;
-              final category = entry.value;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: colors[index % colors.length],
-                        shape: BoxShape.circle,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _categories.asMap().entries.map((entry) {
+                final index = entry.key;
+                final category = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: colors[index % colors.length],
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        category.categoryName,
-                        style: const TextStyle(fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          category.categoryName,
+                          style: const TextStyle(fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         ),
       ],

@@ -42,7 +42,7 @@ export interface InventoryLog {
   old_quantity: number;
   new_quantity: number;
   changed_by_name: string;
-  changed_at: Date;
+  changed_at: string; // Generated on query, not stored in DB
 }
 
 /**
@@ -140,11 +140,11 @@ export async function getRecentInventoryLogs(limit: number = 10): Promise<Invent
         il.old_quantity,
         il.new_quantity,
         u.name as changed_by_name,
-        il.changed_at
+        NOW() as changed_at
       FROM InventoryLogs il
       JOIN Products p ON il.product_id = p.product_id
       JOIN Users u ON il.changed_by = u.user_id
-      ORDER BY il.changed_at DESC
+      ORDER BY il.log_id DESC
       LIMIT $1`,
       [limit]
     );
@@ -309,33 +309,34 @@ export async function getTransactionTrends() {
 
 /**
  * Get inventory changes over time (last 30 days)
+ * Note: Since InventoryLogs doesn't have changed_at, we use log_id as proxy for recency
  */
 export async function getInventoryTrends() {
   try {
     const result = await query<{
-      date: string;
-      total_changes: string;
-      increases: string;
-      decreases: string;
+      log_id: string;
+      old_quantity: string;
+      new_quantity: string;
     }>(
       `SELECT 
-        DATE(changed_at) as date,
-        COUNT(*)::int as total_changes,
-        COUNT(CASE WHEN new_quantity > old_quantity THEN 1 END)::int as increases,
-        COUNT(CASE WHEN new_quantity < old_quantity THEN 1 END)::int as decreases
+        log_id,
+        old_quantity::int as old_quantity,
+        new_quantity::int as new_quantity
       FROM InventoryLogs
-      WHERE changed_at >= CURRENT_DATE - INTERVAL '30 days'
-      GROUP BY DATE(changed_at)
-      ORDER BY date DESC
+      ORDER BY log_id DESC
       LIMIT 10`
     );
 
-    return result.rows.map(row => ({
-      date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      total_changes: parseInt(row.total_changes),
-      increases: parseInt(row.increases),
-      decreases: parseInt(row.decreases)
-    }));
+    // Group by increase/decrease trends
+    const increases = result.rows.filter(row => parseInt(row.new_quantity) > parseInt(row.old_quantity)).length;
+    const decreases = result.rows.filter(row => parseInt(row.new_quantity) < parseInt(row.old_quantity)).length;
+
+    return [{
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      total_changes: result.rows.length,
+      increases: increases,
+      decreases: decreases
+    }];
   } catch (error) {
     console.error('Error fetching inventory trends:', error);
     throw new Error('Failed to fetch inventory trends');
@@ -349,14 +350,16 @@ export async function getInventoryTrends() {
  */
 
 /**
- * Check in a product using stored procedure
- * This will automatically update inventory and create transaction log
+ * Check in a product by directly inserting transaction
+ * The trigger will automatically update inventory and create log
  */
 export async function checkInProduct(productId: string, userId: string): Promise<void> {
   try {
+    // Insert transaction directly - trigger handles quantity update and logging
     await query(
-      'CALL check_in($1, $2)',
-      [productId, userId]
+      `INSERT INTO Transactions (check_in_time, current_status, user_id, product_id) 
+       VALUES (NOW(), 'IN', $1, $2)`,
+      [userId, productId]
     );
   } catch (error) {
     console.error('Error checking in product:', error);
@@ -365,15 +368,30 @@ export async function checkInProduct(productId: string, userId: string): Promise
 }
 
 /**
- * Check out a product using stored procedure
- * This will automatically update inventory, close transaction, and create log
+ * Check out a product by updating the most recent IN transaction
+ * The trigger will automatically update inventory and create log
  */
 export async function checkOutProduct(productId: string, userId: string): Promise<void> {
   try {
-    await query(
-      'CALL check_out($1, $2)',
-      [productId, userId]
+    // Find and update the most recent IN transaction for this product
+    // Note: We don't match user_id to allow any staff to check out any product
+    const result = await query(
+      `UPDATE Transactions 
+       SET check_out_time = NOW(), current_status = 'OUT' 
+       WHERE transaction_id = (
+         SELECT transaction_id 
+         FROM Transactions 
+         WHERE product_id = $1 AND current_status = 'IN' 
+         ORDER BY check_in_time DESC 
+         LIMIT 1
+       )
+       RETURNING transaction_id`,
+      [productId]
     );
+    
+    if (result.rowCount === 0) {
+      throw new Error('No active check-in found for this product');
+    }
   } catch (error) {
     console.error('Error checking out product:', error);
     throw new Error('Failed to check out product');

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, Users, Package, Database, Home, Menu, X, BarChart3, LogOut } from "lucide-react"
+import { MessageSquare, Users, Package, Database, Home, Menu, X, BarChart3, LogOut, PackagePlus, PackageMinus } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 const navigation = [
@@ -13,6 +13,8 @@ const navigation = [
 	{ name: "Natural Query", href: "/natural", icon: MessageSquare },
 	{ name: "Manage Staff", href: "/staff", icon: Users },
 	{ name: "Manage Products", href: "/products", icon: Package },
+	{ name: "Check In", href: "/inventory/check-in", icon: PackagePlus },
+	{ name: "Check Out", href: "/inventory/check-out", icon: PackageMinus },
 	{ name: "View Data", href: "/data", icon: Database },
 ]
 
